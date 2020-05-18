@@ -35,13 +35,14 @@
   Options :
   :es-index        Elasticsearch index name (without suffix).
   :es-action       Elasticsearch action, for example \"index\".
+  :es-type         Elasticsearch type, for example \"event\", for older Elasticsearch versions. New default is \"_doc\"
   :index-suffix    Index suffix, for example \"-yyyy.MM.dd\".
   Each event received by the function can also have these keys (which override default options), and an optional `es-id` key."
   [{:keys [es-index es-action index-suffix]}]
   (fn [event]
-    (let [special-keys [:es-index :es-action :es-id :index-suffix :time :time-ms :attributes]
+    (let [special-keys [:es-index :es-action :es-id :es-type :index-suffix :time :time-ms :attributes]
           es-index  (:es-index event es-index)
-          es-type   "_doc"
+          es-type   (:es-type event "_doc")
           es-action (:es-action event es-action)
           es-id     (:es-id event)
           index-suffix (:index-suffix event index-suffix)
