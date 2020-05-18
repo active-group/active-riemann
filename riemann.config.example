@@ -1,0 +1,16 @@
+;; -*- mode: clojure; -*-
+;; vim: filetype=clojure
+
+;; logging
+(logging/init {:file "/var/log/riemann/riemann.log"
+               :console? true
+               :logsize-rotate 20000000
+               :rotate-count 5})
+
+;; listen over TCP (5555)
+(let [host "0.0.0.0"]
+  (tcp-server {:host host}))
+
+;; add active-riemann to classpath
+(require '[cemerick.pomegranate :as pomegranate])
+(pomegranate/add-classpath "active-riemann-0.1.0-SNAPSHOT.jar")
