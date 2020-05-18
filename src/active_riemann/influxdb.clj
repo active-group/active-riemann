@@ -10,7 +10,7 @@
   (riemann-streams/smap #(dissoc % :ttl)
                         (riemann-test/io
                          (riemann-streams/batch 100 1/10
-                                                (riemann-config/async-queue! (str elasticsearch-url "-" db-name)
+                                                (riemann-config/async-queue! (str influxdb-host "-" db-name)
                                                                              {:queue-size 10000
                                                                               :core-pool-size 1
                                                                               :max-pool-size 128
