@@ -1,4 +1,4 @@
-(defproject active-riemann "0.1.0-SNAPSHOT"
+(defproject active-riemann "0.1.0"
   :description "Common functionality for Riemann streams."
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
