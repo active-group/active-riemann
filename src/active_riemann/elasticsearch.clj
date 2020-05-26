@@ -88,11 +88,11 @@
                                               :index-suffix "-yyyy.MM.dd"
                                               :es-action "index"})})
         es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
-                                            (str elasticsearch-url "-" index-name "-singleton")
+                                            (str ::singleton "-" elasticsearch-url "-" index-name)
                                             {:queue-size 10000 :core-pool-size 4 :max-pool-size 1024}
                                             es-bulk))
         es-bulk-batch (riemann-test/io (riemann-config/async-queue!
-                                        (str elasticsearch-url "-" index-name)
+                                        (str ::batch "-" elasticsearch-url "-" index-name)
                                         {:queue-size 10000 :core-pool-size 4 :max-pool-size 1024}
                                         (riemann-streams/batch 10 5
                                                                es-bulk)))
