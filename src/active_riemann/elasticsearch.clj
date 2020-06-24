@@ -80,21 +80,24 @@
                                                target)))
 
 (defn make-elasticsearch-stream
-  [elasticsearch-url index-name]
+  [elasticsearch-url index-name & [opts-map]]
   "The stream that passes to elasticsearch."
-  (let [es-bulk (riemann-elasticsearch/elasticsearch-bulk
+  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size]
+         :or {batch-n 100 batch-dt 5
+              queue-size 10000 core-pool-size 4 max-pool-size 1024}} opts-map
+        es-bulk (riemann-elasticsearch/elasticsearch-bulk
                  {:es-endpoint elasticsearch-url
                   :formatter (bulk-formatter {:es-index index-name
                                               :index-suffix "-yyyy.MM.dd"
                                               :es-action "index"})})
         es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
                                             (str ::singleton "-" elasticsearch-url "-" index-name)
-                                            {:queue-size 10000 :core-pool-size 4 :max-pool-size 1024}
+                                            {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
                                             es-bulk))
         es-bulk-batch (riemann-test/io (riemann-config/async-queue!
                                         (str ::batch "-" elasticsearch-url "-" index-name)
-                                        {:queue-size 10000 :core-pool-size 4 :max-pool-size 1024}
-                                        (riemann-streams/batch 10 5
+                                        {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
+                                        (riemann-streams/batch batch-n batch-dt
                                                                es-bulk)))
         elasticsearch-stream
         (riemann-streams/exception-stream
