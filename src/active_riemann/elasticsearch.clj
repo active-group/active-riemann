@@ -36,16 +36,16 @@
   :es-index        Elasticsearch index name (without suffix).
   :es-action       Elasticsearch action, for example \"index\".
   :es-type         Elasticsearch type, for example \"event\", for older Elasticsearch versions. New default is \"_doc\"
-  :index-suffix    Index suffix, for example \"-yyyy.MM.dd\".
+  :es-index-suffix Optional index suffix, for example \"-yyyy.MM.dd\".
   Each event received by the function can also have these keys (which override default options), and an optional `es-id` key."
-  [{:keys [es-index es-action index-suffix]}]
+  [{:keys [es-index es-action es-index-suffix]}]
   (fn [event]
-    (let [special-keys [:es-index :es-action :es-id :es-type :index-suffix :time :time-ms :attributes]
+    (let [special-keys [:es-index :es-action :es-id :es-type :es-index-suffix :time :time-ms :attributes]
           es-index  (:es-index event es-index)
           es-type   (:es-type event "_doc")
           es-action (:es-action event es-action)
           es-id     (:es-id event)
-          index-suffix (:index-suffix event index-suffix)
+          es-index-suffix (:es-index-suffix event es-index-suffix)
           ms (if-let [s (:time-ms event)]
                (Integer/parseInt s)
                0)
@@ -55,11 +55,12 @@
           source (-> (apply dissoc event special-keys)
                      (assoc (keyword "@timestamp") timestamp))
           metadata (let [m {:_index (str es-index
-                                         (clj-time.format/unparse
-                                          (clj-time.format/formatter index-suffix)
-                                          (if-let [tm (:time event)]
-                                            (toTime tm ms)
-                                            (currentTime))))
+                                         (when (not-empty es-index-suffix)
+                                           (clj-time.format/unparse
+                                            (clj-time.format/formatter es-index-suffix)
+                                            (if-let [tm (:time event)]
+                                              (toTime tm ms)
+                                              (currentTime)))))
                             :_type es-type}]
                      (if es-id
                        (assoc m :_id es-id)
@@ -80,22 +81,23 @@
                                                target)))
 
 (defn make-elasticsearch-stream
-  [elasticsearch-url index-name & [opts-map]]
+  [elasticsearch-url es-index-name & [opts-map]]
   "The stream that passes to elasticsearch."
-  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size]
+  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size es-index-suffix]
          :or {batch-n 100 batch-dt 5
-              queue-size 10000 core-pool-size 4 max-pool-size 1024}} opts-map
+              queue-size 10000 core-pool-size 4 max-pool-size 1024
+              es-index-suffix "-yyyy.MM.dd"}} opts-map
         es-bulk (riemann-elasticsearch/elasticsearch-bulk
                  {:es-endpoint elasticsearch-url
-                  :formatter (bulk-formatter {:es-index index-name
-                                              :index-suffix "-yyyy.MM.dd"
+                  :formatter (bulk-formatter {:es-index es-index-name
+                                              :es-index-suffix es-index-suffix
                                               :es-action "index"})})
         es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
-                                            (str ::singleton "-" elasticsearch-url "-" index-name)
+                                            (str ::singleton "-" elasticsearch-url "-" es-index-name)
                                             {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
                                             es-bulk))
         es-bulk-batch (riemann-test/io (riemann-config/async-queue!
-                                        (str ::batch "-" elasticsearch-url "-" index-name)
+                                        (str ::batch "-" elasticsearch-url "-" es-index-name)
                                         {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
                                         (riemann-streams/batch batch-n batch-dt
                                                                es-bulk)))
