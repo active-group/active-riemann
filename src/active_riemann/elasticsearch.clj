@@ -114,15 +114,15 @@
     elasticsearch-stream))
 
 (defn make-elasticsearch-typed-stream
-  [elasticsearch-url index-base-name type]
+  [elasticsearch-url index-base-name type & [opts-map]]
   "Annotate index name with type."
-  (make-elasticsearch-stream elasticsearch-url (str index-base-name "-" type)))
+  (make-elasticsearch-stream elasticsearch-url (str index-base-name "-" type) opts-map))
 
 (defn make-elasticsearch-split-by-type-stream
-  [elasticsearch-url index-name]
-  (let [event-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "event")
-        metric-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "metric")
-        state-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "state")]
+  [elasticsearch-url index-name  & [opts-map]]
+  (let [event-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "event" opts-map)
+        metric-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "metric" opts-map)
+        state-stream (make-elasticsearch-typed-stream elasticsearch-url index-name "state" opts-map)]
     (riemann-streams/split*
      #(= "event" (:type %)) event-stream
      #(= "metric" (:type %)) metric-stream
