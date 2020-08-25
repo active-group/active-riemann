@@ -39,7 +39,7 @@
             (discard-events e)))
         influxdb-singleton
         (riemann-test/io
-         (riemann-config/async-queue! (str ::influx "-" influxdb-host "-" (or db-name "riemann"))
+         (riemann-config/async-queue! (str ::influx-singleton "-" influxdb-host "-" (or db-name "riemann"))
                                       {:queue-size queue-size
                                        :core-pool-size core-pool-size
                                        :max-pool-size max-pool-size
@@ -48,7 +48,7 @@
         influxdb-batch
         (riemann-test/io
          (riemann-streams/batch batch-n batch-dt
-                                (riemann-config/async-queue! (str ::influx "-" influxdb-host "-" (or db-name "riemann"))
+                                (riemann-config/async-queue! (str ::influx-batch "-" influxdb-host "-" (or db-name "riemann"))
                                                              {:queue-size queue-size
                                                               :core-pool-size core-pool-size
                                                               :max-pool-size max-pool-size

@@ -97,11 +97,11 @@
                                               :es-action "index"})
                   :http-options {:throw-entire-message? true}})
         es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
-                                            (str ::singleton "-" elasticsearch-url "-" es-index-name)
+                                            (str ::elasticsearch-singleton "-" elasticsearch-url "-" es-index-name)
                                             {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
                                             es-bulk))
         es-bulk-batch (riemann-test/io (riemann-config/async-queue!
-                                        (str ::batch "-" elasticsearch-url "-" es-index-name)
+                                        (str ::elasticsearch-batch "-" elasticsearch-url "-" es-index-name)
                                         {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
                                         (riemann-streams/batch batch-n batch-dt
                                                                es-bulk)))
