@@ -4,11 +4,14 @@
             [riemann.elasticsearch :as riemann-elasticsearch]
             [riemann.streams :as riemann-streams]
             [riemann.test :as riemann-test]
+            [riemann.common :as common]
+            [clj-time.coerce :as time-coerce]
+            [clj-time.format :as time-format]
             [clojure.tools.logging :as logging]))
 
 (def hostname
   (let [[_age hostname]
-        (riemann.common/get-hostname nil)]
+        (common/get-hostname nil)]
     hostname))
 
 (defn currentTimeSeconds
@@ -17,18 +20,18 @@
 
 (defn currentTime
   []
-  (clj-time.coerce/from-long (currentTimeSeconds)))
+  (time-coerce/from-long (currentTimeSeconds)))
 
 (defn toTime
   [epoch-sec ms]
-  (clj-time.coerce/from-long (long (+ (* 1000 epoch-sec) ms))))
+  (time-coerce/from-long (long (+ (* 1000 epoch-sec) ms))))
 
-(let [iso-fmt (clj-time.format/formatters :date-time)]
+(let [iso-fmt (time-format/formatters :date-time)]
   (defn unix-to-iso8602 [epoch-sec ms]
-    (clj-time.format/unparse iso-fmt
+    (time-format/unparse iso-fmt
                              (toTime epoch-sec ms)))
   (defn current-to-iso8602 []
-    (clj-time.format/unparse iso-fmt (currentTime))))
+    (time-format/unparse iso-fmt (currentTime))))
 
 (defn bulk-formatter
   "Returns a function which accepts an event and formats it for the Elasticsearch bulk API.
@@ -81,8 +84,8 @@
                                                target)))
 
 (defn make-elasticsearch-stream
-  [elasticsearch-url es-index-name & [opts-map]]
   "The stream that passes to elasticsearch."
+  [elasticsearch-url es-index-name & [opts-map]]
   (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size es-index-suffix]
          :or {batch-n 100 batch-dt 5
               queue-size 10000 core-pool-size 4 max-pool-size 1024
@@ -91,7 +94,8 @@
                  {:es-endpoint elasticsearch-url
                   :formatter (bulk-formatter {:es-index es-index-name
                                               :es-index-suffix es-index-suffix
-                                              :es-action "index"})})
+                                              :es-action "index"})
+                  :http-options {:throw-entire-message? true}})
         es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
                                             (str ::singleton "-" elasticsearch-url "-" es-index-name)
                                             {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
@@ -104,18 +108,31 @@
         elasticsearch-stream
         (riemann-streams/exception-stream
          (fn [batched-events]
+           ;; batched events is an exception event that wraps the clj-http exception:
+           ;; {:time `unix-time`
+           ;;  :service "riemann exception"
+           ;;  :state "error"
+           ;;  :tags ["exception" (.getName (class e))]
+           ;;  :event original
+           ;;  :exception e that carriers `ex-data`
+           ;;  :description (str e "\n\n"
+           ;;                    (join "\n" (.getStackTrace e)))}
+           ;; ex-data is from clj-http:
+           ;; {:status `status` :headers `map of headers` :body `response body`}
            (logging/warn "Failed to forward" (count (:event batched-events)) "events to Elasticsearch; trying to submit individually")
+           (logging/debug (let [exd (ex-data (:exception batched-events))] (str (:status exd) " " (pr-str (:body exd)))))
            (doseq [ev (:event batched-events)]
              ((riemann-streams/exception-stream
                (fn [singleton-event]
-                 (logging/warn "Finally failed to forward singleton event to Elasticsearch:" (pr-str (:event singleton-event))))
+                 (logging/warn "Finally failed to forward singleton event to Elasticsearch:" (pr-str (:event singleton-event)))
+                 (logging/debug (let [exd (ex-data (:exception singleton-event))] (str (:status exd) " " (pr-str (:body exd))))))
                es-bulk-singleton) ev)))
          es-bulk-batch)]
     elasticsearch-stream))
 
 (defn make-elasticsearch-typed-stream
-  [elasticsearch-url index-base-name type & [opts-map]]
   "Annotate index name with type."
+  [elasticsearch-url index-base-name type & [opts-map]]
   (make-elasticsearch-stream elasticsearch-url (str index-base-name "-" type) opts-map))
 
 (defn make-elasticsearch-split-by-type-stream
