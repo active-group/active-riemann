@@ -20,6 +20,8 @@
   [e]
   (logging/debug "Connection to influxdb not ready, discarding " (count (:event e)) " events"))
 
+(def default-db-name "riemann")
+
 (defn make-influxdb-stream
   [influxdb-host & [db-name tag-fields opts-map]]
   (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time]
@@ -30,7 +32,7 @@
         (future (make-influxdb-connection (merge
                                            {:version :0.9
                                             :host influxdb-host}
-                                           (if db-name {:db db-name} {})
+                                           (if db-name {:db db-name} {:db default-db-name})
                                            (if tag-fields {:tag-fields tag-fields} {}))))
         influxdb
         (fn [e]
@@ -39,7 +41,7 @@
             (discard-events e)))
         influxdb-singleton
         (riemann-test/io
-         (riemann-config/async-queue! (str ::influx-singleton "-" influxdb-host "-" (or db-name "riemann"))
+         (riemann-config/async-queue! (str ::influx-singleton "-" influxdb-host "-" (or db-name default-db-name))
                                       {:queue-size queue-size
                                        :core-pool-size core-pool-size
                                        :max-pool-size max-pool-size
@@ -48,7 +50,7 @@
         influxdb-batch
         (riemann-test/io
          (riemann-streams/batch batch-n batch-dt
-                                (riemann-config/async-queue! (str ::influx-batch "-" influxdb-host "-" (or db-name "riemann"))
+                                (riemann-config/async-queue! (str ::influx-batch "-" influxdb-host "-" (or db-name default-db-name))
                                                              {:queue-size queue-size
                                                               :core-pool-size core-pool-size
                                                               :max-pool-size max-pool-size
