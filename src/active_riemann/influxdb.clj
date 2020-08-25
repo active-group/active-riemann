@@ -26,21 +26,46 @@
          :or {batch-n 1000 batch-dt 1
               queue-size 10000 core-pool-size 1
               max-pool-size 128 keep-alive-time 60000}} opts-map
-        influxdb-future (future (make-influxdb-connection (merge
-                                                           {:version :0.9
-                                                            :host influxdb-host}
-                                                           (if db-name {:db db-name} {})
-                                                           (if tag-fields {:tag-fields tag-fields} {}))))]
+        influxdb-future
+        (future (make-influxdb-connection (merge
+                                           {:version :0.9
+                                            :host influxdb-host}
+                                           (if db-name {:db db-name} {})
+                                           (if tag-fields {:tag-fields tag-fields} {}))))
+        influxdb
+        (fn [e]
+          (if (realized? influxdb-future)
+            (@influxdb-future e)
+            (discard-events e)))
+        influxdb-singleton
+        (riemann-test/io
+         (riemann-config/async-queue! (str ::influx "-" influxdb-host "-" (or db-name "riemann"))
+                                      {:queue-size queue-size
+                                       :core-pool-size core-pool-size
+                                       :max-pool-size max-pool-size
+                                       :keep-alive-time keep-alive-time}
+                                      influxdb))
+        influxdb-batch
+        (riemann-test/io
+         (riemann-streams/batch batch-n batch-dt
+                                (riemann-config/async-queue! (str ::influx "-" influxdb-host "-" (or db-name "riemann"))
+                                                             {:queue-size queue-size
+                                                              :core-pool-size core-pool-size
+                                                              :max-pool-size max-pool-size
+                                                              :keep-alive-time keep-alive-time}
+                                                             influxdb)))
+        influxdb-stream
+        (riemann-streams/exception-stream
+         (fn [batched-events]
+           (logging/warn "Failed to forward" (count (:event batched-events)) "events to influxdb; trying to submit individually")
+           (logging/debug (let [exd (ex-data (:exception batched-events))] (str (:status exd) " " (pr-str (:body exd)))))
+           (doseq [ev (:event batched-events)]
+             ((riemann-streams/exception-stream
+               (fn [singleton-event]
+                 (logging/warn "Finally failed to forward singleton event to influxdb:" (pr-str (:event singleton-event)))
+                 (logging/debug (let [exd (ex-data (:exception singleton-event))] (str (:status exd) " " (pr-str (:body exd))))))
+               influxdb-singleton) ev)))
+         influxdb-batch)]
     (riemann-streams/smap #(dissoc % :ttl)
                           (riemann-test/tap :influxdb
-                                            (riemann-test/io
-                                             (riemann-streams/batch batch-n batch-dt
-                                                                    (riemann-config/async-queue! (str ::influx "-" influxdb-host "-" (or db-name "riemann"))
-                                                                                                 {:queue-size queue-size
-                                                                                                  :core-pool-size core-pool-size
-                                                                                                  :max-pool-size max-pool-size
-                                                                                                  :keep-alive-time keep-alive-time}
-                                                                                                 (fn [e]
-                                                                                                   (if (realized? influxdb-future)
-                                                                                                     (@influxdb-future e)
-                                                                                                     (discard-events e))))))))))
+                                            influxdb-stream))))
