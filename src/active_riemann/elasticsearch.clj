@@ -1,37 +1,10 @@
 (ns active-riemann.elasticsearch
   "Elasticsearch endpoint."
-  (:require [riemann.config :as riemann-config]
-            [riemann.elasticsearch :as riemann-elasticsearch]
+  (:require [riemann.elasticsearch :as riemann-elasticsearch]
             [riemann.streams :as riemann-streams]
-            [riemann.test :as riemann-test]
-            [riemann.common :as common]
-            [clj-time.coerce :as time-coerce]
+            [active-riemann.common :as common]
             [clj-time.format :as time-format]
             [clojure.tools.logging :as logging]))
-
-(def hostname
-  (let [[_age hostname]
-        (common/get-hostname nil)]
-    hostname))
-
-(defn currentTimeSeconds
-  []
-  (quot (System/currentTimeMillis) 1000))
-
-(defn currentTime
-  []
-  (time-coerce/from-long (currentTimeSeconds)))
-
-(defn toTime
-  [epoch-sec ms]
-  (time-coerce/from-long (long (+ (* 1000 epoch-sec) ms))))
-
-(let [iso-fmt (time-format/formatters :date-time)]
-  (defn unix-to-iso8602 [epoch-sec ms]
-    (time-format/unparse iso-fmt
-                             (toTime epoch-sec ms)))
-  (defn current-to-iso8602 []
-    (time-format/unparse iso-fmt (currentTime))))
 
 (defn bulk-formatter
   "Returns a function which accepts an event and formats it for the Elasticsearch bulk API.
@@ -53,17 +26,17 @@
                (Integer/parseInt s)
                0)
           timestamp (if-let [tm (:time event)]
-                      (unix-to-iso8602 tm ms)
-                      (current-to-iso8602))
+                      (common/unix-to-iso8602 tm ms)
+                      (common/current-to-iso8602))
           source (-> (apply dissoc event special-keys)
                      (assoc (keyword "@timestamp") timestamp))
           metadata (let [m {:_index (str es-index
                                          (when (not-empty es-index-suffix)
-                                           (clj-time.format/unparse
-                                            (clj-time.format/formatter es-index-suffix)
+                                           (time-format/unparse
+                                            (time-format/formatter es-index-suffix)
                                             (if-let [tm (:time event)]
-                                              (toTime tm ms)
-                                              (currentTime)))))
+                                              (common/toTime tm ms)
+                                              (common/currentTime)))))
                             :_type es-type}]
                      (if es-id
                        (assoc m :_id es-id)
@@ -86,9 +59,10 @@
 (defn make-elasticsearch-stream
   "The stream that passes to elasticsearch."
   [elasticsearch-url es-index-name & [opts-map]]
-  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size es-index-suffix]
+  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time es-index-suffix]
          :or {batch-n 100 batch-dt 5
-              queue-size 10000 core-pool-size 4 max-pool-size 1024
+              queue-size 10000 core-pool-size 4
+              max-pool-size 1024 keep-alive-time 10
               es-index-suffix "-yyyy.MM.dd"}} opts-map
         es-bulk (riemann-elasticsearch/elasticsearch-bulk
                  {:es-endpoint elasticsearch-url
@@ -96,38 +70,11 @@
                                               :es-index-suffix es-index-suffix
                                               :es-action "index"})
                   :http-options {:throw-entire-message? true}})
-        es-bulk-singleton (riemann-test/io (riemann-config/async-queue!
-                                            (str ::elasticsearch-singleton "-" elasticsearch-url "-" es-index-name)
-                                            {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
-                                            es-bulk))
-        es-bulk-batch (riemann-test/io (riemann-config/async-queue!
-                                        (str ::elasticsearch-batch "-" elasticsearch-url "-" es-index-name)
-                                        {:queue-size queue-size :core-pool-size core-pool-size :max-pool-size max-pool-size}
-                                        (riemann-streams/batch batch-n batch-dt
-                                                               es-bulk)))
         elasticsearch-stream
-        (riemann-streams/exception-stream
-         (fn [batched-events]
-           ;; batched events is an exception event that wraps the clj-http exception:
-           ;; {:time `unix-time`
-           ;;  :service "riemann exception"
-           ;;  :state "error"
-           ;;  :tags ["exception" (.getName (class e))]
-           ;;  :event original
-           ;;  :exception e that carriers `ex-data`
-           ;;  :description (str e "\n\n"
-           ;;                    (join "\n" (.getStackTrace e)))}
-           ;; ex-data is from clj-http:
-           ;; {:status `status` :headers `map of headers` :body `response body`}
-           (logging/warn "Failed to forward" (count (:event batched-events)) "events to Elasticsearch; trying to submit individually")
-           (logging/debug (let [exd (ex-data (:exception batched-events))] (str (:status exd) " " (pr-str (:body exd)))))
-           (doseq [ev (:event batched-events)]
-             ((riemann-streams/exception-stream
-               (fn [singleton-event]
-                 (logging/warn "Finally failed to forward singleton event to Elasticsearch:" (pr-str (:event singleton-event)))
-                 (logging/debug (let [exd (ex-data (:exception singleton-event))] (str (:status exd) " " (pr-str (:body exd))))))
-               es-bulk-singleton) ev)))
-         es-bulk-batch)]
+        (common/batch-with-single-retry (str ::elasticsearch "-" elasticsearch-url "-" es-index-name)
+                                        batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
+                                        (fn [exception-event] (let [exd (ex-data (:exception exception-event))] (str (:status exd) " " (pr-str (:body exd)))))
+                                        es-bulk)]
     elasticsearch-stream))
 
 (defn make-elasticsearch-typed-stream
