@@ -31,7 +31,8 @@
         (future (make-influxdb-connection (merge
                                            {:version :0.9
                                             :host influxdb-host
-                                            :db db-name}
+                                            :db db-name
+                                            :timeout 20000}
                                            (if tag-fields {:tag-fields tag-fields} {}))))
         influxdb
         (fn [e]
@@ -41,7 +42,7 @@
         influxdb-stream
         (common/batch-with-single-retry (str ::influxdb "-" influxdb-host "-" db-name)
                                         batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
-                                        (fn [exception-event] (let [exd (ex-data (:exception exception-event))] (str (:status exd) " " (pr-str (:body exd)))))
+                                        (fn [exception-event] (str (:exception exception-event)))
                                         influxdb)]
     (riemann-streams/smap #(dissoc % :ttl)
                           (riemann-test/tap ::influxdb
