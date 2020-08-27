@@ -32,6 +32,8 @@
   (defn current-to-iso8602 []
     (time-format/unparse iso-fmt (currentTime))))
 
+(def timeout-ms 20000)
+
 (defn batch-with-single-retry
   [label batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
    exception-event->log-msg child-stream]

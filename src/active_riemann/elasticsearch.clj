@@ -69,7 +69,8 @@
                   :formatter (bulk-formatter {:es-index es-index-name
                                               :es-index-suffix es-index-suffix
                                               :es-action "index"})
-                  :http-options {:throw-entire-message? true}})
+                  :http-options {:throw-entire-message? true
+                                 :socket-timeout common/timeout-ms}})
         elasticsearch-stream
         (common/batch-with-single-retry (str ::elasticsearch "-" elasticsearch-url "-" es-index-name)
                                         batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time

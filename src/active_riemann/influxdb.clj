@@ -32,7 +32,7 @@
                                            {:version :0.9
                                             :host influxdb-host
                                             :db db-name
-                                            :timeout 20000}
+                                            :timeout common/timeout-ms}
                                            (if tag-fields {:tag-fields tag-fields} {}))))
         influxdb
         (fn [e]
