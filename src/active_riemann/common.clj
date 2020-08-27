@@ -37,18 +37,24 @@
 (defn batch-with-single-retry
   [label batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
    exception-event->log-msg child-stream]
-  (let [singleton-stream
-        (riemann-test/io (riemann-config/async-queue!
-                          (str label "-singleton")
-                          {:queue-size queue-size :core-pool-size core-pool-size
-                           :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
-                          (bound-fn* child-stream)))
+  (let [async-queue!
+        (fn [label child-stream]
+          (riemann-config/async-queue!
+           label
+           {:queue-size queue-size :core-pool-size core-pool-size
+            :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
+           (bound-fn* child-stream)))
+        singleton-stream
+        (riemann-test/io (async-queue! (str label "-singleton") child-stream))
         batch-stream
-        (riemann-test/io (riemann-config/async-queue!
+        (riemann-test/io (async-queue!
                           (str label "-batch")
-                          {:queue-size queue-size :core-pool-size core-pool-size
-                           :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
-                          (bound-fn* (riemann-streams/batch batch-n batch-dt child-stream))))
+                          (riemann-streams/batch batch-n batch-dt child-stream)))
+        quotient 10
+        batch-10th-stream
+        (riemann-test/io (async-queue!
+                          (str label "-batch-10th")
+                          (riemann-streams/batch (quot batch-n quotient) batch-dt child-stream)))
         batch-with-single-retry
         (riemann-streams/exception-stream
          (fn [batched-exception-event]
@@ -66,13 +72,21 @@
            (let [original-events (:event batched-exception-event)]
              (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually")
              (logging/warn label (exception-event->log-msg batched-exception-event))
-             (doseq [ev original-events]
+             (doseq [evs (partition quotient original-events)]
                ((riemann-streams/exception-stream
-                 (fn [singleton-exception-event]
-                   (let [original-event (:event singleton-exception-event)]
-                     (logging/warn label "finally failed to forward singleton event:" (pr-str original-event))
+                 (fn [batched-10th-exception-event]
+                   (let [original-events (:event batched-10th-exception-event)]
+                     (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually")
                      (when-let [log-msg (exception-event->log-msg batched-exception-event)]
-                       (logging/warn label log-msg))))
-                 singleton-stream) ev))))
+                       (logging/warn label log-msg))
+                     (doseq [ev original-events]
+                       ((riemann-streams/exception-stream
+                         (fn [singleton-exception-event]
+                           (let [original-event (:event singleton-exception-event)]
+                             (logging/warn label "finally failed to forward singleton event:" (pr-str original-event))
+                             (when-let [log-msg (exception-event->log-msg batched-exception-event)]
+                               (logging/warn label log-msg))))
+                         singleton-stream) ev))))
+                 batch-10th-stream) evs))))
          batch-stream)]
     batch-with-single-retry))
