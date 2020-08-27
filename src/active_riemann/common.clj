@@ -71,7 +71,8 @@
                  (fn [singleton-exception-event]
                    (let [original-event (:event singleton-exception-event)]
                      (logging/warn label "finally failed to forward singleton event:" (pr-str original-event))
-                     (logging/warn label (let [exd (ex-data (:exception singleton-exception-event))] (str (:status exd) " " (pr-str (:body exd)))))))
+                     (when-let [log-msg (exception-event->log-msg batched-exception-event)]
+                       (logging/warn label log-msg))))
                  singleton-stream) ev))))
          batch-stream)]
     batch-with-single-retry))
