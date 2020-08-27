@@ -42,13 +42,13 @@
                           (str label "-singleton")
                           {:queue-size queue-size :core-pool-size core-pool-size
                            :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
-                          child-stream))
+                          (bound-fn* child-stream)))
         batch-stream
         (riemann-test/io (riemann-config/async-queue!
                           (str label "-batch")
                           {:queue-size queue-size :core-pool-size core-pool-size
                            :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
-                          (riemann-streams/batch batch-n batch-dt child-stream)))
+                          (bound-fn* (riemann-streams/batch batch-n batch-dt child-stream))))
         batch-with-single-retry
         (riemann-streams/exception-stream
          (fn [batched-exception-event]
