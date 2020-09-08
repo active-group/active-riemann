@@ -34,6 +34,16 @@
 
 (def timeout-ms 20000)
 
+(defn exception-event->ex-data-log-msg
+  [exception-event]
+  (when-let [exd (ex-data (:exception exception-event))]
+    (str "ex-data " (pr-str (:body exd)))))
+
+(defn exception-event->exception-log-msg
+  [exception-event]
+  (when-let [ex (:exception exception-event)]
+    (str "exception " (pr-str ex))))
+
 (defn batch-with-single-retry
   [label batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
    exception-event->log-msg child-stream]
@@ -51,10 +61,11 @@
                           (str label "-batch")
                           (riemann-streams/batch batch-n batch-dt child-stream)))
         quotient 10
+        batch-n-quotient (quot batch-n quotient)
         batch-10th-stream
         (riemann-test/io (async-queue!
                           (str label "-batch-10th")
-                          (riemann-streams/batch (quot batch-n quotient) batch-dt child-stream)))
+                          (riemann-streams/batch batch-n-quotient batch-dt child-stream)))
         batch-with-single-retry
         (riemann-streams/exception-stream
          (fn [batched-exception-event]
@@ -70,9 +81,10 @@
            ;; ex-data is from clj-http:
            ;; {:status `status` :headers `map of headers` :body `response body`}
            (let [original-events (:event batched-exception-event)]
-             (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually")
-             (logging/warn label (exception-event->log-msg batched-exception-event))
-             (doseq [evs (partition quotient original-events)]
+             (logging/warn label "failed to forward" (count original-events) "events; trying to submit in chunks of" batch-n-quotient)
+             (when-let [log-msg (exception-event->log-msg batched-exception-event)]
+               (logging/warn label log-msg))
+             (doseq [evs (partition batch-n-quotient original-events)]
                ((riemann-streams/exception-stream
                  (fn [batched-10th-exception-event]
                    (let [original-events (:event batched-10th-exception-event)]
