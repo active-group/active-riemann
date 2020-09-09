@@ -4,6 +4,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [riemann "0.3.5"]]
+                 [de.active-group/active-clojure "0.35.2"]
+                 [riemann "0.3.5"]
+                 [diehard "0.10.0"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
