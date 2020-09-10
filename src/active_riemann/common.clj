@@ -90,20 +90,21 @@
              (when-let [log-msg (exception-event->log-msg batched-exception-event)]
                (logging/warn label log-msg))
              (doseq [evs (partition batch-n-quotient original-events)]
-               ((riemann-streams/exception-stream
-                 (fn [batched-10th-exception-event]
-                   (let [original-events (:event batched-10th-exception-event)]
-                     (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually" (exception-name batched-10th-exception-event))
-                     (when-let [log-msg (exception-event->log-msg batched-10th-exception-event)]
-                       (logging/warn label log-msg))
-                     (doseq [ev original-events]
-                       ((riemann-streams/exception-stream
-                         (fn [singleton-exception-event]
-                           (let [original-event (:event singleton-exception-event)]
-                             (logging/warn label "finally failed to forward singleton event" (exception-name singleton-exception-event) (pr-str original-event))
-                             (when-let [log-msg (exception-event->log-msg singleton-exception-event)]
-                               (logging/warn label log-msg))))
-                         singleton-stream) ev))))
-                 batch-10th-stream) evs))))
+               (doseq [ev evs]
+                 ((riemann-streams/exception-stream
+                   (fn [batched-10th-exception-event]
+                     (let [original-events (:event batched-10th-exception-event)]
+                       (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually" (exception-name batched-10th-exception-event))
+                       (when-let [log-msg (exception-event->log-msg batched-10th-exception-event)]
+                         (logging/warn label log-msg))
+                       (doseq [ev original-events]
+                         ((riemann-streams/exception-stream
+                           (fn [singleton-exception-event]
+                             (let [original-event (:event singleton-exception-event)]
+                               (logging/warn label "finally failed to forward singleton event" (exception-name singleton-exception-event) (pr-str original-event))
+                               (when-let [log-msg (exception-event->log-msg singleton-exception-event)]
+                                 (logging/warn label log-msg))))
+                           singleton-stream) ev))))
+                   batch-10th-stream) ev)))))
          batch-stream)]
     batch-with-single-retry))
