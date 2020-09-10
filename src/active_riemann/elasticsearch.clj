@@ -74,7 +74,7 @@
         elasticsearch-stream
         (common/batch-with-single-retry (str ::elasticsearch "-" elasticsearch-url "-" es-index-name)
                                         batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
-                                        common/exception-event->exception-log-msg
+                                        common/exception-event->ex-data-log-msg
                                         es-bulk)]
     elasticsearch-stream))
 

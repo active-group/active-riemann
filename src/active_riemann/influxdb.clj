@@ -42,7 +42,7 @@
         influxdb-stream
         (common/batch-with-single-retry (str ::influxdb "-" influxdb-host "-" db-name)
                                         batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
-                                        common/exception-event->exception-log-msg
+                                        common/exception-event->ex-data-log-msg
                                         influxdb)]
     (riemann-streams/smap #(dissoc % :ttl)
                           (riemann-test/tap ::influxdb

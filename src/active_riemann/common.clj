@@ -44,6 +44,11 @@
   (when-let [ex (:exception exception-event)]
     (str "exception " (pr-str ex))))
 
+(defn exception-name
+  [exception-event]
+  (when-let [ex (:exception exception-event)]
+    (str "[" (str ex) "]")))
+
 (defn batch-with-single-retry
   [label batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
    exception-event->log-msg child-stream]
@@ -75,27 +80,27 @@
            ;;  :state "error"
            ;;  :tags ["exception" (.getName (class e))]
            ;;  :event original
-           ;;  :exception e that carriers `ex-data`
+           ;;  :exception e that carries `ex-data`
            ;;  :description (str e "\n\n"
            ;;                    (join "\n" (.getStackTrace e)))}
            ;; ex-data is from clj-http:
            ;; {:status `status` :headers `map of headers` :body `response body`}
            (let [original-events (:event batched-exception-event)]
-             (logging/warn label "failed to forward" (count original-events) "events; trying to submit in chunks of" batch-n-quotient)
+             (logging/warn label "failed to forward" (count original-events) "events; trying to submit in chunks of" batch-n-quotient (exception-name batched-exception-event))
              (when-let [log-msg (exception-event->log-msg batched-exception-event)]
                (logging/warn label log-msg))
              (doseq [evs (partition batch-n-quotient original-events)]
                ((riemann-streams/exception-stream
                  (fn [batched-10th-exception-event]
                    (let [original-events (:event batched-10th-exception-event)]
-                     (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually")
+                     (logging/warn label "failed to forward" (count original-events) "events; trying to submit individually" (exception-name batched-10th-exception-event))
                      (when-let [log-msg (exception-event->log-msg batched-exception-event)]
                        (logging/warn label log-msg))
                      (doseq [ev original-events]
                        ((riemann-streams/exception-stream
                          (fn [singleton-exception-event]
                            (let [original-event (:event singleton-exception-event)]
-                             (logging/warn label "finally failed to forward singleton event:" (pr-str original-event))
+                             (logging/warn label "finally failed to forward singleton event:" (pr-str original-event) (exception-name singleton-exception-event))
                              (when-let [log-msg (exception-event->log-msg batched-exception-event)]
                                (logging/warn label log-msg))))
                          singleton-stream) ev))))
