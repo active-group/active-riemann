@@ -7,5 +7,6 @@
                  [de.active-group/active-clojure "0.35.2"]
                  [riemann "0.3.5"]
                  [diehard "0.10.0"]]
+  :jvm-opts ["-server"]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
