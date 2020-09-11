@@ -94,3 +94,20 @@
        (with-riemann-circuit-breaker circuit-breaker)
        [{:service "test-event"}{:service "test-event"}]
        [{:service "test-event"}{:service "test-event"}]))))2
+
+(test/deftest t-make-indicator-stream-and-breaker-stream
+  (let [breaker (make-indicator-stream-and-breaker-stream :t-make-indicator-stream-and-breaker-stream 1 1)
+        indicator-stream (active-riemann.breaker/breaker-indicator-stream breaker)
+        breaker-stream (active-riemann.breaker/breaker-breaker-stream breaker)]
+    (test/testing "indicator stream"
+      (riemann-test/run-stream
+       (indicator-stream)
+       [{:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
+        {:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
+        {:service riemann-netty-event-executor-queue-size-service-name :metric (/ riemann-netty-event-executor-queue-size-load-limit 2)}])
+      (test/is (true? ((load-level-hit-fn? load-atom :t-make-indicator-stream-and-breaker-stream)))))
+    (test/testing "breaker stream"
+      (riemann-test/test-stream
+       (breaker-stream)
+       [{:service "test-event"}{:service "test-event"}]
+       [{:service "test-event"}]))))

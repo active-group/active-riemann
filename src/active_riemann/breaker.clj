@@ -21,6 +21,7 @@
   [load-atom load-level]
   (fn [load-level-hit?]
     (fn stream [_metric-event]
+      (logging/info "Load indicator" [load-level load-level-hit-key] load-level-hit?)
       (swap! load-atom assoc-in [load-level load-level-hit-key] load-level-hit?))))
 
 (defn load-level-hit-fn?
@@ -40,10 +41,11 @@
                                                (riemann-streams/moving-time-window n-seconds
                                                                                    (apply riemann-streams/smap
                                                                                           riemann-folds/mean
-                                                                                          (riemann-streams/where (>= metric load-limit)
-                                                                                                                 (indicate-fn true)
-                                                                                                                 (else
-                                                                                                                  (indicate-fn false)))
+                                                                                          (riemann-streams/changed #(>= (:metric %) load-limit)
+                                                                                                                   (riemann-streams/where (>= metric load-limit)
+                                                                                                                                          (indicate-fn true)
+                                                                                                                                          (else
+                                                                                                                                           (indicate-fn false))))
                                                                                           children))))))
 
 (defn riemann-load-indicator
@@ -51,7 +53,8 @@
   (let [[opts-map & children] (if (map? (first args))
                                 args
                                 (concat [{}] args))]
-    (load-indicator riemann-netty-event-executor-queue-size-service-name
+    (apply
+     load-indicator riemann-netty-event-executor-queue-size-service-name
                     riemann-netty-event-executor-queue-size-load-limit
                     (make-indicate-fn load-atom load-level)
                     (merge opts-map
@@ -86,8 +89,8 @@
 (defn make-indicator-stream-and-breaker-stream
   [load-level failure-duration-minutes resume-delay-minutes]
   (make-breaker
-   (riemann-load-indicator load-atom load-level failure-duration-minutes)
-   (with-riemann-circuit-breaker (riemann-circuit-breaker load-level (load-level-hit-fn? load-atom load-level) resume-delay-minutes))))
+   (partial riemann-load-indicator load-atom load-level failure-duration-minutes)
+   (partial with-riemann-circuit-breaker (riemann-circuit-breaker load-level (load-level-hit-fn? load-atom load-level) resume-delay-minutes))))
 
 ;; Load levels on system:
 ;; mild, moderate, elevated, severe, extreme
