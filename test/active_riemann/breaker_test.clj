@@ -7,17 +7,17 @@
 (test/deftest t-load-indicator
   (test/testing "One event with high metric."
     (riemann-test/test-stream
-     (load-indicator "test-service" 10 (fn [res] (fn [_metric-event] (test/is (true? res)))))
+     (load-indicator "test-service" 10 60 (fn [res] (fn [_metric-event] (test/is (true? res)))))
      [{:service "test-service" :metric 100}]
      [{:service "test-service" :metric 100}]))
   (test/testing "One event with low metric."
     (riemann-test/test-stream
-     (load-indicator "test-service" 10 (fn [res] (fn [_metric-event] (test/is (false? res)))))
+     (load-indicator "test-service" 10 60 (fn [res] (fn [_metric-event] (test/is (false? res)))))
      [{:service "test-service" :metric 1}]
      [{:service "test-service" :metric 1}]))
   (test/testing "Many events with high metric."
     (riemann-test/test-stream
-     (load-indicator "test-service" 10 (fn [res] (fn [_metric-event] (test/is (true? res)))))
+     (load-indicator "test-service" 10 60 (fn [res] (fn [_metric-event] (test/is (true? res)))))
      [{:service "test-service" :metric 100}
       {:service "test-service" :metric 100}
       {:service "test-service" :metric 10}]
@@ -26,7 +26,7 @@
       {:service "test-service" :metric 70}]))
   (test/testing "Many events with low metric."
     (riemann-test/test-stream
-     (load-indicator "test-service" 10 (fn [res] (fn [_metric-event] (test/is (false? res)))))
+     (load-indicator "test-service" 10 60 (fn [res] (fn [_metric-event] (test/is (false? res)))))
      [{:service "test-service" :metric 1}
       {:service "test-service" :metric 10}
       {:service "test-service" :metric 10}]
@@ -116,7 +116,7 @@
   (define-breaker :t-define-breaker 1 1 indicator-stream breaker-stream)
   (test/testing "indicator stream"
     (riemann-test/run-stream
-     (indicator-stream)
+     (riemann-streams/sdo (indicator-stream))
      [{:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
       {:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
       {:service riemann-netty-event-executor-queue-size-service-name :metric (/ riemann-netty-event-executor-queue-size-load-limit 2)}])
