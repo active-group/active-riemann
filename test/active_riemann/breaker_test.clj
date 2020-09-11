@@ -111,3 +111,18 @@
        (breaker-stream)
        [{:service "test-event"}{:service "test-event"}]
        [{:service "test-event"}]))))
+
+(test/deftest t-define-breaker
+  (define-breaker :t-define-breaker 1 1 indicator-stream breaker-stream)
+  (test/testing "indicator stream"
+    (riemann-test/run-stream
+     (indicator-stream)
+     [{:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
+      {:service riemann-netty-event-executor-queue-size-service-name :metric (* riemann-netty-event-executor-queue-size-load-limit 2)}
+      {:service riemann-netty-event-executor-queue-size-service-name :metric (/ riemann-netty-event-executor-queue-size-load-limit 2)}])
+    (test/is (true? ((load-level-hit-fn? load-atom :t-define-breaker)))))
+  (test/testing "breaker stream"
+    (riemann-test/test-stream
+     (breaker-stream)
+     [{:service "test-event"}{:service "test-event"}]
+     [{:service "test-event"}])))

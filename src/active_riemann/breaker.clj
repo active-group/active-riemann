@@ -113,3 +113,10 @@
    (reduce (fn [r [load-level {:keys [failure-duration-minutes resume-delay-minutes]}]]
              (assoc r load-level (make-indicator-stream-and-breaker-stream load-level failure-duration-minutes resume-delay-minutes opts-map)))
            {} load-level-definitions)))
+
+(defmacro define-breaker
+  [level failure-duration-minutes resume-delay-minutes indicator-stream-binding breaker-stream-binding & [opts-map]]
+  (let [breaker `breaker#]
+  `(let [~breaker (make-indicator-stream-and-breaker-stream ~level ~failure-duration-minutes ~resume-delay-minutes ~opts-map)]
+     (def ~indicator-stream-binding (breaker-indicator-stream ~breaker))
+     (def ~breaker-stream-binding (breaker-breaker-stream ~breaker)))))
