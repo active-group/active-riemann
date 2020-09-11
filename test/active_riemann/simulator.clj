@@ -101,7 +101,7 @@
 
 (def the-a-delay-stream (a-delay-stream a-delay))
 
-(def breakers (breaker/make-breakers {:test {:failure-duration-minutes 1 :resume-delay-minutes 2}}))
+(def breakers (breaker/make-breakers {:test {:failure-duration-minutes 1 :resume-delay-minutes 2}} {:indicator-metric-limit 2000000}))
 (def test-breaker (:test breakers))
 (def test-breaker-indicator-stream (active-riemann.breaker/breaker-indicator-stream test-breaker))
 (def test-breaker-breaker-stream (active-riemann.breaker/breaker-breaker-stream test-breaker))

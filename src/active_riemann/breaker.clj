@@ -52,24 +52,28 @@
   [load-atom load-level failure-duration-minutes & args]
   (let [[opts-map & children] (if (map? (first args))
                                 args
-                                (concat [{}] args))]
-    (apply
-     load-indicator riemann-netty-event-executor-queue-size-service-name
-                    riemann-netty-event-executor-queue-size-load-limit
-                    (make-indicate-fn load-atom load-level)
-                    (merge opts-map
-                           {:n-seconds (* 60 failure-duration-minutes)})
-                    children)))
+                                (concat [{}] args))
+        {:keys [indicator-service-name indicator-metric-limit]
+         :or {indicator-service-name riemann-netty-event-executor-queue-size-service-name
+              indicator-metric-limit riemann-netty-event-executor-queue-size-load-limit}} opts-map]
+    (apply load-indicator
+           indicator-service-name
+           indicator-metric-limit
+           (make-indicate-fn load-atom load-level)
+           (merge opts-map
+                  {:n-seconds (* 60 failure-duration-minutes)})
+           children)))
 
 (defn riemann-circuit-breaker
-  [label load-level-hit-fn? resume-delay-minutes]
-  (diehard-circuit-breaker/circuit-breaker {:delay-ms (* 60 1000 resume-delay-minutes)
-                                            :failure-threshold 1
-                                            :success-threshold 1
-                                            :fail-if (fn [_result _exception] (load-level-hit-fn?))
-                                            :on-open (fn [] (logging/info "Circuit breaker" label "opened"))
-                                            :on-half-open (fn [] (logging/info "Circuit breaker" label "half-opened"))
-                                            :on-close (fn [] (logging/info "Circuit breaker" label "closed"))}))
+  [label load-level-hit-fn? resume-delay-minutes & [opts-map]]
+  (diehard-circuit-breaker/circuit-breaker (merge {:delay-ms (* 60 1000 resume-delay-minutes)
+                                                   :failure-threshold 1
+                                                   :success-threshold 1
+                                                   :fail-if (fn [_result _exception] (load-level-hit-fn?))
+                                                   :on-open (fn [] (logging/info "Circuit breaker" label "opened"))
+                                                   :on-half-open (fn [] (logging/info "Circuit breaker" label "half-opened"))
+                                                   :on-close (fn [] (logging/info "Circuit breaker" label "closed"))}
+                                                  opts-map)))
 
 (defn with-riemann-circuit-breaker
   [circuit-breaker & children]
@@ -87,9 +91,9 @@
    breaker-stream breaker-breaker-stream])
 
 (defn make-indicator-stream-and-breaker-stream
-  [load-level failure-duration-minutes resume-delay-minutes]
+  [load-level failure-duration-minutes resume-delay-minutes & [opts-map]]
   (make-breaker
-   (partial riemann-load-indicator load-atom load-level failure-duration-minutes)
+   (partial riemann-load-indicator load-atom load-level failure-duration-minutes opts-map)
    (partial with-riemann-circuit-breaker (riemann-circuit-breaker load-level (load-level-hit-fn? load-atom load-level) resume-delay-minutes))))
 
 ;; Load levels on system:
@@ -105,7 +109,7 @@
 (defn make-breakers
   ([]
    (make-breakers load-level-definitions))
-  ([load-level-definitions]
+  ([load-level-definitions & [opts-map]]
    (reduce (fn [r [load-level {:keys [failure-duration-minutes resume-delay-minutes]}]]
-             (assoc r load-level (make-indicator-stream-and-breaker-stream load-level failure-duration-minutes resume-delay-minutes)))
+             (assoc r load-level (make-indicator-stream-and-breaker-stream load-level failure-duration-minutes resume-delay-minutes opts-map)))
            {} load-level-definitions)))
