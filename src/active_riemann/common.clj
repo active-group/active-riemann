@@ -50,20 +50,20 @@
   [label batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time
    exception-event->log-msg child-stream]
   (let [async-queue!
-        (fn [label child-stream]
+        (fn [label child-stream & [scale-queue-size]]
           (riemann-config/async-queue!
            label
-           {:queue-size queue-size :core-pool-size core-pool-size
+           {:queue-size (* queue-size (or scale-queue-size 1)) :core-pool-size core-pool-size
             :max-pool-size max-pool-size :keep-alive-time keep-alive-time}
            (bound-fn* child-stream)))
+        quotient 10
+        batch-n-quotient (quot batch-n quotient)
         singleton-stream
-        (riemann-test/io (async-queue! (str label "-singleton") child-stream))
+        (riemann-test/io (async-queue! (str label "-singleton") child-stream batch-n-quotient))
         batch-stream
         (riemann-test/io (async-queue!
                           (str label "-batch")
                           (riemann-streams/batch batch-n batch-dt child-stream)))
-        quotient 10
-        batch-n-quotient (quot batch-n quotient)
         batch-10th-stream
         (riemann-test/io (async-queue!
                           (str label "-batch-10th")
