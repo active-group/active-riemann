@@ -8,10 +8,7 @@
             [clj-time.format :as time-format]
             [clojure.tools.logging :as logging]))
 
-(def hostname
-  (let [[_age hostname]
-        (common/get-hostname nil)]
-    hostname))
+(def hostname (common/localhost))
 
 (defn currentTimeSeconds
   []

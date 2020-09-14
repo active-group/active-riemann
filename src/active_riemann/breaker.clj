@@ -5,7 +5,8 @@
             [clojure.tools.logging :as logging]
             [diehard.circuit-breaker :as diehard-circuit-breaker]
             [diehard.core :as diehard-core]
-            [active.clojure.record :refer [define-record-type]]))
+            [active.clojure.record :refer [define-record-type]]
+            [active-riemann.common :as common]))
 
 (def riemann-netty-event-executor-queue-size-service-name
   "riemann netty event-executor queue size")
@@ -32,16 +33,16 @@
 (defn load-indicator
   [service-name load-limit failure-duration-seconds indicate-fn & children]
   (riemann-streams/where (service service-name)
-                         (riemann-streams/by :host ;; FIXME only current host makes sense
-                                             (riemann-streams/moving-time-window failure-duration-seconds
-                                                                                 (apply riemann-streams/smap
-                                                                                        riemann-folds/mean
-                                                                                        (riemann-streams/changed #(>= (:metric %) load-limit)
-                                                                                                                 (riemann-streams/where (>= metric load-limit)
-                                                                                                                                        (indicate-fn true)
-                                                                                                                                        (else
-                                                                                                                                         (indicate-fn false))))
-                                                                                        children)))))
+                         (riemann-streams/where (= common/hostname (:host event))
+                                                (riemann-streams/moving-time-window failure-duration-seconds
+                                                                                    (apply riemann-streams/smap
+                                                                                           riemann-folds/mean
+                                                                                           (riemann-streams/changed #(>= (:metric %) load-limit)
+                                                                                                                    (riemann-streams/where (>= metric load-limit)
+                                                                                                                                           (indicate-fn true)
+                                                                                                                                           (else
+                                                                                                                                            (indicate-fn false))))
+                                                                                           children)))))
 
 (defn riemann-load-indicator
   [load-atom load-level failure-duration-minutes & args]
