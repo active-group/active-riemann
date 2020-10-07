@@ -3,6 +3,8 @@
 A library with common Riemann functionality that is useful in many Riemann
 setups.
 
+[![Clojars Project](https://img.shields.io/clojars/v/de.active-group/active-riemann.svg)](https://clojars.org/de.active-group/active-riemann)
+
 ## Usage
 
 Use
