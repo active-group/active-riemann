@@ -22,8 +22,8 @@
 
 (defn make-influxdb-stream
   [influxdb-host & [db-name tag-fields opts-map]]
-  (let [{:keys [batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time]
-         :or {batch-n 1000 batch-dt 1
+  (let [{:keys [port batch-n batch-dt queue-size core-pool-size max-pool-size keep-alive-time]
+         :or {port 8086 batch-n 1000 batch-dt 1
               queue-size 10000 core-pool-size 1
               max-pool-size 128 keep-alive-time 60000}} opts-map
         db-name (or db-name "riemann")
@@ -31,6 +31,7 @@
         (future (make-influxdb-connection (merge
                                            {:version :0.9
                                             :host influxdb-host
+                                            :port port
                                             :db db-name
                                             :timeout common/timeout-ms}
                                            (if tag-fields {:tag-fields tag-fields} {}))))
