@@ -93,7 +93,7 @@
       (riemann-test/test-stream
        (with-riemann-circuit-breaker circuit-breaker)
        [{:service "test-event"}{:service "test-event"}]
-       [{:service "test-event"}{:service "test-event"}]))))2
+       [{:service "test-event"}{:service "test-event"}]))))
 
 (test/deftest t-make-indicator-stream-and-breaker-stream
   (let [breaker (make-indicator-stream-and-breaker-stream :t-make-indicator-stream-and-breaker-stream 1 1)
