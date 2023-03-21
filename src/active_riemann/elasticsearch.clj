@@ -47,14 +47,11 @@
 
 (defn elasticsearch-filter
   "Filter the events that should be passed to elasticsearch, anotate them."
-  [target annotate-event-fn]
-  (riemann-streams/where (and
-                          (= "event" (:type event)) ;; only :type "event"
-                          (metric nil) ;; no metrics
-                          (nil? (:timeout event))) ;; no timeouts
-                         (riemann-streams/smap (fn [ev]
-                                                 (annotate-event-fn ev))
-                                               target)))
+  [target pred? annotate-event-fn]
+  (riemann-streams/where* pred?
+                          (riemann-streams/smap (fn [ev]
+                                                  (annotate-event-fn ev))
+                                                target)))
 
 (defn make-elasticsearch-stream
   "The stream that passes to elasticsearch."
