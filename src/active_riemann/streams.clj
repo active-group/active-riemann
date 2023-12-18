@@ -25,14 +25,14 @@
       (fn add [queue event]
         (let [queue-count (count queue)
               metric-labels (metric-labels-fn event)]
-          (metric/log-counter-metric "active_riemann_streams_fifo_throttle_events_total" metric-labels 1)
+          (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_events_total" metric-labels 1)
           (if (and (number? max-fifo-size) (>= queue-count max-fifo-size))
             ;; discard incoming event if max queue length is hit
             (do
-              (metric/log-counter-metric "active_riemann_streams_fifo_throttle_discarded_events_total" metric-labels 1)
+              (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_discarded_events_total" metric-labels 1)
               queue)
             (do
-              (metric/log-gauge-metric "active_riemann_streams_fifo_queue_size" metric-labels (inc queue-count))
+              (metric/log-gauge-metric! "active_riemann_streams_fifo_queue_size" metric-labels (inc queue-count))
               (conj queue event)))))
 
       ; Do nothing when event arrives, only when the time interval has elapsed
