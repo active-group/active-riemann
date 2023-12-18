@@ -6,7 +6,7 @@
             [riemann.common :as common]
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]
-            [clojure.tools.logging :as logging]))
+            [active-riemann.logging :as logging]))
 
 (def hostname (common/localhost))
 

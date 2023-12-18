@@ -2,7 +2,7 @@
   "Circuit breaker for riemann."
   (:require [riemann.streams :as riemann-streams]
             [riemann.folds :as riemann-folds]
-            [clojure.tools.logging :as logging]
+            [active-riemann.logging :as logging]
             [diehard.circuit-breaker :as diehard-circuit-breaker]
             [diehard.core :as diehard-core]
             [active.clojure.record :refer [define-record-type]]

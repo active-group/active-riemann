@@ -4,8 +4,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [de.active-group/active-clojure "0.35.2"]
-                 [riemann "0.3.8"]
+                 [de.active-group/active-clojure "0.42.2"]
+                 [de.active-group/active-logger "0.13.1" :exclusions [com.fzakaria/slf4j-timbre]]
+                 [riemann "0.3.10"]
                  [diehard "0.10.0"]]
   :jvm-opts ["-server"]
   :target-path "target/%s"

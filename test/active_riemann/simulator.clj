@@ -5,7 +5,7 @@
             [riemann.streams :as riemann-streams]
             [active-riemann.control :as control]
             [active-riemann.breaker :as breaker]
-            [clojure.tools.logging :as logging]))
+            [active-riemann.logging :as logging]))
 
 (defonce riemann-client-atom (atom nil))
 

@@ -4,7 +4,7 @@
             [riemann.streams :as riemann-streams]
             [active-riemann.common :as common]
             [clj-time.format :as time-format]
-            [clojure.tools.logging :as logging]))
+            [active-riemann.logging :as logging]))
 
 (defn bulk-formatter
   "Returns a function which accepts an event and formats it for the Elasticsearch bulk API.

@@ -4,7 +4,7 @@
             [riemann.streams :as riemann-streams]
             [riemann.test :as riemann-test]
             [active-riemann.common :as common]
-            [clojure.tools.logging :as logging]))
+            [active-riemann.logging :as logging]))
 
 (defn make-influxdb-connection
   [opts]
