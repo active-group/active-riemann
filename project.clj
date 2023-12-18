@@ -1,4 +1,4 @@
-(defproject de.active-group/active-riemann "0.13.0-SNAPSHOT"
+(defproject de.active-group/active-riemann "0.12.1"
   :description "Common functionality for Riemann streams."
   :url "https://github.com/active-group/active-riemann"
   :license {:name "Eclipse Public License"
