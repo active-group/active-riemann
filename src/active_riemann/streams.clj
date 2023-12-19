@@ -1,6 +1,7 @@
 (ns active-riemann.streams
   "Additional streams functionality"
   (:require [riemann.streams :as riemann-streams]
+            [riemann.time :as riemann-time]
             [active.clojure.logger.metric :as metric]))
 
 (defn fifo-throttle
@@ -16,29 +17,41 @@
                    (rest children)
                    children)
         max-fifo-size (:max-fifo-size options)
-        metric-labels-fn (or (:metric-labels-fn options) (constantly {}))]
-    (riemann-streams/part-time-simple dt
-      ; Copy the previously arrived elements or initialize queue
-      (fn reset [queue] (if (nil? queue) [] (vec (rest queue))))
+        metric-labels-fn (or (:metric-labels-fn options) (constantly {}))
 
-      ; Conj new elements into the queue
-      (fn add [queue event]
-        (let [queue-count (count queue)
-              metric-labels (metric-labels-fn event)]
-          (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_events_total" metric-labels 1)
-          (if (and (number? max-fifo-size) (>= queue-count max-fifo-size))
-            ;; discard incoming event if max queue length is hit
-            (do
-              (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_discarded_events_total" metric-labels 1)
-              queue)
-            (do
-              (metric/log-gauge-metric! "active_riemann_streams_fifo_queue_size" metric-labels (inc queue-count))
-              (conj queue event)))))
+        add
+        (fn add [queue event]
+          (let [queue-count (count queue)
+                metric-labels (metric-labels-fn event)]
+            (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_events_total" metric-labels 1)
+            (if (and (number? max-fifo-size) (>= queue-count max-fifo-size))
+              ;; discard incoming event if max queue length is hit
+              (do
+                (metric/log-counter-metric! "active_riemann_streams_fifo_throttle_discarded_events_total" metric-labels 1)
+                queue)
+              (do
+                (metric/log-gauge-metric! "active_riemann_streams_fifo_queue_size" metric-labels (inc queue-count))
+                (conj queue event)))))
 
-      ; Do nothing when event arrives, only when the time interval has elapsed
-      (constantly nil)
+        remove
+        (fn remove [queue]
+          (vec (rest queue)))
 
-      ; Send elements once the time interval has elapsed
-      (fn flush [queue _start-time _end-time]
-        (when-let [event (and (vector? queue) (first queue))]
-          (riemann-streams/call-rescue event children))))))
+        flush
+        (fn flush [queue]
+          (when-let [event (first queue)]
+            (riemann-streams/call-rescue event children)))
+
+        a-queue (atom [])
+
+        enqueue!
+        (fn enqueue [event]
+          (swap! a-queue add event))
+
+        periodically-dequeue!
+        (fn periodically-dequeue []
+          (swap! a-queue (fn [queue]
+                           (flush queue)
+                           (remove queue))))]
+    (riemann-time/every! dt periodically-dequeue!)
+    enqueue!))
