@@ -5,6 +5,10 @@
             [riemann.test :as riemann-test]
             [clojure.test :as test]))
 
+;; suppress output of logging
+(alter-var-root (var active.clojure.logger.internal/log-event!-internal)
+                (constantly (constantly nil)))
+
 (test/deftest t-load-indicator
   (test/testing "One event with high metric."
     (riemann-test/test-stream
