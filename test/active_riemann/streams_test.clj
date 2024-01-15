@@ -28,6 +28,11 @@
           {:data 5} 0]
          (make-example-events 2 3))))
 
+(defmacro test-stream-intervals
+  [?stream ?input ?expected]
+  `(riemann-test/with-test-env
+     (riemann-test/test-stream-intervals ~?stream ~?input ~?expected)))
+
 (deftest t-fifo-throttle
   (testing "events arrive slower than throttle"
     (let [events  [{:data 0} 2
@@ -36,7 +41,7 @@
                    {:data 3} 2
                    {:data 4} 2
                    {:data 5} 2]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
         (fifo-throttle 1)
         events
         (take-nth 2 events))))
@@ -47,7 +52,7 @@
                    {:data 3} 1
                    {:data 4} 1
                    {:data 5} 1]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
         (fifo-throttle 1)
         events
         (take-nth 2 events))))
@@ -58,7 +63,7 @@
                    {:data 3} 0
                    {:data 4} 1
                    {:data 5} 0]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
         (fifo-throttle 1)
         events
         (take 3 (take-nth 2 events))))))
@@ -74,7 +79,7 @@
                   {:data 5} 0
                   ;; this is needed to keep the test going
                   {:data "last"} 10]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
        (fifo-throttle 1 {:max-fifo-size 100})
        events
        (take-nth 2 events))))
@@ -87,7 +92,7 @@
                   {:data 5} 0
                   ;; this is needed to keep the test going
                   {:data "last"} 0]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
        (fifo-throttle 1 {:max-fifo-size 100})
        events
        (take 3 (take-nth 2 events)))))
@@ -100,7 +105,7 @@
                   {:data 5} 0
                   ;; this is needed to keep the test going
                   {:data "last"} 10]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
        (fifo-throttle 1 {:max-fifo-size 1})
        events
        [{:data 0} {:data 1} {:data 3} {:data 5}])))
@@ -113,7 +118,7 @@
                   {:data 5} 0
                   ;; this is needed to keep the test going
                   {:data "last"} 10]]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
        (fifo-throttle 1 {:max-fifo-size 0})
        events
        []))))
@@ -129,7 +134,7 @@
                   (fn [_namespace metric _labels value & [_mp]]
                     (when (active.clojure.logger.metric-accumulator/gauge-metric? metric)
                       (reset! queue-metric value)))]
-      (riemann-test/test-stream-intervals
+      (test-stream-intervals
         (fifo-throttle 1 {:max-fifo-size (inc cnt)})
         events
         (take-nth 2 events))
