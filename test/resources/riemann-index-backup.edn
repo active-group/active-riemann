@@ -1,0 +1,1 @@
+[{:host "localhost", :service "foo", :metric 10, :time 123} {:host "localhost", :service "bar", :metric 10, :time 123}]

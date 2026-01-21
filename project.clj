@@ -7,7 +7,9 @@
                  [de.active-group/active-clojure "0.45.1"]
                  [de.active-group/active-logger "0.16.4" :exclusions [com.fzakaria/slf4j-timbre]]
                  [riemann "0.3.12"]
-                 [diehard "0.12.0"]]
+                 [diehard "0.12.0"]
+                 [com.magnars/test-with-files "2021-02-17"]]
+
   :jvm-opts ["-server"]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
