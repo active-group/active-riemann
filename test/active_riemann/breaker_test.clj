@@ -80,25 +80,25 @@
       (((make-indicate-fn load-atom :test-level) true) 'event)
       (riemann-test/test-stream
        (with-riemann-circuit-breaker circuit-breaker)
-       [{:service "test-event"}{:service "test-event"}]
+       [{:service "test-event"} {:service "test-event"}]
        [{:service "test-event"}])
       (riemann-test/test-stream
        (with-riemann-circuit-breaker circuit-breaker)
-       [{:service "test-event"}{:service "test-event"}]
+       [{:service "test-event"} {:service "test-event"}]
        [])))
   (test/testing "Circuit breaker closed again."
     (let [circuit-breaker (riemann-circuit-breaker :test-level (load-level-hit-fn? load-atom :test-level) 1)]
       (((make-indicate-fn load-atom :test-level) true) 'event)
       (riemann-test/test-stream
        (with-riemann-circuit-breaker circuit-breaker)
-       [{:service "test-event"}{:service "test-event"}]
+       [{:service "test-event"} {:service "test-event"}]
        [{:service "test-event"}])
       (((make-indicate-fn load-atom :test-level) false) 'event)
       (.close circuit-breaker)
       (riemann-test/test-stream
        (with-riemann-circuit-breaker circuit-breaker)
-       [{:service "test-event"}{:service "test-event"}]
-       [{:service "test-event"}{:service "test-event"}]))))
+       [{:service "test-event"} {:service "test-event"}]
+       [{:service "test-event"} {:service "test-event"}]))))
 
 (test/deftest t-make-indicator-stream-and-breaker-stream
   (let [breaker (make-indicator-stream-and-breaker-stream :t-make-indicator-stream-and-breaker-stream 1 1)
@@ -114,7 +114,7 @@
     (test/testing "breaker stream"
       (riemann-test/test-stream
        (breaker-stream)
-       [{:service "test-event"}{:service "test-event"}]
+       [{:service "test-event"} {:service "test-event"}]
        [{:service "test-event"}]))))
 
 (test/deftest t-define-breaker
@@ -129,5 +129,5 @@
   (test/testing "breaker stream"
     (riemann-test/test-stream
      (breaker-stream)
-     [{:service "test-event"}{:service "test-event"}]
+     [{:service "test-event"} {:service "test-event"}]
      [{:service "test-event"}])))

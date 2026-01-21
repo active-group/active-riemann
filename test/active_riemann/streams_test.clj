@@ -42,9 +42,9 @@
                    {:data 4} 2
                    {:data 5} 2]]
       (test-stream-intervals
-        (fifo-throttle 1)
-        events
-        (take-nth 2 events))))
+       (fifo-throttle 1)
+       events
+       (take-nth 2 events))))
   (testing "events arrive just in time for throttle"
     (let [events  [{:data 0} 1
                    {:data 1} 1
@@ -53,9 +53,9 @@
                    {:data 4} 1
                    {:data 5} 1]]
       (test-stream-intervals
-        (fifo-throttle 1)
-        events
-        (take-nth 2 events))))
+       (fifo-throttle 1)
+       events
+       (take-nth 2 events))))
   (testing "events arrive twice as fast for throttle"
     (let [events  [{:data 0} 1
                    {:data 1} 0
@@ -64,10 +64,9 @@
                    {:data 4} 1
                    {:data 5} 0]]
       (test-stream-intervals
-        (fifo-throttle 1)
-        events
-        (take 3 (take-nth 2 events))))))
-
+       (fifo-throttle 1)
+       events
+       (take 3 (take-nth 2 events))))))
 
 (deftest t-fifo-throttle-bounded
   (testing "test bounded throttle that is sufficient over time"
@@ -135,7 +134,7 @@
                     (when (active.clojure.logger.metric-accumulator/gauge-metric? metric)
                       (reset! queue-metric value)))]
       (test-stream-intervals
-        (fifo-throttle 1 {:max-fifo-size (inc cnt)})
-        events
-        (take-nth 2 events))
+       (fifo-throttle 1 {:max-fifo-size (inc cnt)})
+       events
+       (take-nth 2 events))
       (is (= 1 @queue-metric)))))

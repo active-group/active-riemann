@@ -1,0 +1,42 @@
+name: Active-Riemann Project Checks
+on: [push, workflow_dispatch]
+
+jobs:
+  lein-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Prepare java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@13
+        with:
+          lein: latest
+
+      - name: Run lein test
+        run: lein test
+
+  clojure-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Prepare java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@13
+        with:
+          cljfmt: latest
+      - name: Run cljfmt
+        run: cljfmt check
