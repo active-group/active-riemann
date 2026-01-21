@@ -74,7 +74,6 @@
     (dotimes [_n n]
       (reinject-event!))))
 
-
 (defn info-stream
   [e]
   (logging/info (pr-str e)))

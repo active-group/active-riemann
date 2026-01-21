@@ -111,6 +111,6 @@
 (defmacro define-breaker
   [level failure-duration-minutes resume-delay-minutes indicator-stream-binding breaker-stream-binding & [opts-map]]
   (let [breaker `breaker#]
-  `(let [~breaker (make-indicator-stream-and-breaker-stream ~level ~failure-duration-minutes ~resume-delay-minutes (or ~opts-map {}))]
-     (def ~indicator-stream-binding (breaker-indicator-stream ~breaker))
-     (def ~breaker-stream-binding (breaker-breaker-stream ~breaker)))))
+    `(let [~breaker (make-indicator-stream-and-breaker-stream ~level ~failure-duration-minutes ~resume-delay-minutes (or ~opts-map {}))]
+       (def ~indicator-stream-binding (breaker-indicator-stream ~breaker))
+       (def ~breaker-stream-binding (breaker-breaker-stream ~breaker)))))
