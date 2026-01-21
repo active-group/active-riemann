@@ -75,7 +75,7 @@
     (try
       (diehard-core/with-circuit-breaker circuit-breaker
         (riemann-streams/call-rescue event children))
-      (catch net.jodah.failsafe.CircuitBreakerOpenException _e
+      (catch dev.failsafe.CircuitBreakerOpenException _e
         (riemann-streams/sdo)))))
 
 (define-record-type Breaker
