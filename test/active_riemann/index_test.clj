@@ -52,24 +52,24 @@
 
 (t/deftest t-restore-index-empty-edn-file
   (let [the-index (riemann-config/index)]
-    (t/is (= [] (riemann.index/search the-index "*")))
+    (t/is (= [] (riemann-index/search the-index "*")))
     (t/is (= [] (captured-events)))
 
     (active-index/restore-index the-index (file-path "empty.edn"))
 
     ;; nothing added to the index
-    (t/is (= [] (riemann.index/search the-index "*")))
+    (t/is (= [] (riemann-index/search the-index "*")))
     (t/is (= [] (captured-events)))
 
     (riemann-index/insert the-index {:host "the-host" :service "baz" :time 124})
     (t/is (= [{:host "the-host" :service "baz" :time 124}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
 
     ;; nothing added to the index and nothing existing overwritten in the index
     (active-index/restore-index the-index (file-path "empty.edn"))
 
     (t/is (= [{:host "the-host" :service "baz" :time 124}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
     (t/is (= [] (captured-events)))))
 
 (t/deftest t-restore-index-invalid-edn-file
@@ -77,7 +77,7 @@
     (active-index/restore-index the-index (file-path "invalid-content.edn"))
 
     ;; nothing added to the index
-    (t/is (= [] (riemann.index/search the-index "*")))
+    (t/is (= [] (riemann-index/search the-index "*")))
     (t/is (= [{:level :error,
                :message
                ["active-riemann.index/try-open-edn Error reading riemann-index backup file: test/resources/invalid-content.edn Invalid number: +1j"]}]
@@ -87,13 +87,13 @@
 
     (riemann-index/insert the-index {:host "the-host" :service "baz" :time 124})
     (t/is (= [{:host "the-host" :service "baz" :time 124}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
 
     ;; nothing added to the index and nothing existing overwritten in the index
     (active-index/restore-index the-index (file-path "invalid-content.edn"))
 
     (t/is (= [{:host "the-host" :service "baz" :time 124}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
     (t/is (= [{:level :error,
                :message
                ["active-riemann.index/try-open-edn Error reading riemann-index backup file: test/resources/invalid-content.edn Invalid number: +1j"]}]
@@ -110,7 +110,7 @@
               {:host "localhost" :service "foo" :metric 10 :time 123}
               {:host "the-host" :service "baz" :time 124}
               {:host "localhost" :service "bar" :metric 10 :time 123}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
     (t/is (= [] (captured-events)))))
 
 ;; backup-index
@@ -127,7 +127,7 @@
               {:host "localhost" :service "foo" :metric 10 :time 123}
               {:host "the-host" :service "baz" :time 124}
               {:host "localhost" :service "bar" :metric 10 :time 123}]
-             (riemann.index/search the-index "*")))
+             (riemann-index/search the-index "*")))
 
     (active-index/backup-index the-index nil)
     (t/is (= [{:level :error,
