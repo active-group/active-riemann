@@ -99,18 +99,29 @@
                ["active-riemann.index/try-open-edn Error reading riemann-index backup file: test/resources/invalid-content.edn Invalid number: +1j"]}]
              (captured-events)))))
 
-(t/deftest t-restore-index-edn-file-with-content
+(t/deftest t-restore-index-edn-file-with-content-no-index-overlap
   (let [the-index (riemann-config/index)]
     (riemann-index/insert the-index {:host "the-host" :service "baz" :time 124})
     (active-index/restore-index the-index (file-path "riemann-index-backup.edn"))
     (riemann-index/insert the-index {:host "the-host" :service "biz" :time 125})
 
-      ;; TODO: is there a logical order in this result?
-    (t/is (= [{:host "the-host" :service "biz" :time 125}
-              {:host "localhost" :service "foo" :metric 10 :time 123}
+    (t/is (= [{:host "localhost" :service "bar" :metric 10 :time 123}
               {:host "the-host" :service "baz" :time 124}
-              {:host "localhost" :service "bar" :metric 10 :time 123}]
-             (riemann-index/search the-index "*")))
+              {:host "the-host" :service "biz" :time 125}
+              {:host "localhost" :service "foo" :metric 10 :time 123}]
+             (sort-by :service (riemann-index/search the-index "*"))))
+    (t/is (= [] (captured-events)))))
+
+;; FIXME: do we want to overwrite a newer event in the new index?
+(t/deftest t-restore-index-edn-file-with-content-with-index-overlap
+  (let [the-index (riemann-config/index)]
+    (riemann-index/insert the-index {:host "localhost" :service "foo" :metric 10 :time 124})
+    (active-index/restore-index the-index (file-path "riemann-index-backup.edn"))
+
+    ;; note: using sort (not set) to see whether the index contains duplicates
+    (t/is (= [{:host "localhost" :service "bar" :metric 10 :time 123}
+              {:host "localhost" :service "foo" :metric 10 :time 123}]
+             (sort-by :service (riemann-index/search the-index "*"))))
     (t/is (= [] (captured-events)))))
 
 ;; backup-index
