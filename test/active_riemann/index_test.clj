@@ -41,6 +41,9 @@
 (defn file-path [file-name]
   (str "test/resources/" file-name))
 
+;; TODOs
+;; - separate try-store/try-open-edn tests from index-related tests
+
 (t/deftest t-restore-index-no-edn-file
   (active-index/restore-index (riemann-config/index) "not-existing.edn")
   (t/is (= [{:level :error,
