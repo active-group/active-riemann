@@ -492,7 +492,7 @@
     (t/is (= [true, true, true]
              (active-index/insert-events the-index
                                          [event-1, event-2, event-3]
-                                         active-index/dummy-insert?
+                                         active-index/always-insert
                                          f-event->event)))
     (t/is (= [{:host "localhost" :service "bar" :ttl 100 :time 1}
               {:host "localhost" :service "biz" :time 1}

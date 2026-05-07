@@ -83,13 +83,9 @@
                    (.getMessage e))
         nil))))
 
-;; dummy-functions
-
-(def dummy-event->event identity)
-
-(defn dummy-insert? [_index _event] true)
-
 ;; insert event?
+
+(defn always-insert [_index _event] true)
 
 (defn host-service-query
   "riemann query ast to ask the riemann-index for an event, that has the same
@@ -142,7 +138,7 @@
   - insert? (optional): condition on which an event is inserted into the index
     (`true`) or not (`false`)
 
-    default: `dummy-insert?` (always `true`)
+    default: `always-insert` (always `true`)
     see `util-insert?` for an alternative
 
     Keep performance issues in mind - queries to the riemann-index can be
@@ -153,7 +149,7 @@
           unexpected things could happen
 
   - f-event->event (optional): function to adjust the event before insertion
-    default: `dummy-event->event` (`identity`)
+    default: `identity`
     Note: make sure to provide a proper function, failures are not caught,
           unexpected things could happen
 
@@ -178,10 +174,10 @@
     to make sure that events with existing events with the same 'host' and
     'service' are not overwritten."
   ([index events]
-   (insert-events index events dummy-insert? dummy-event->event))
+   (insert-events index events always-insert identity))
 
   ([index events insert?]
-   (insert-events index events insert? dummy-event->event))
+   (insert-events index events insert? identity))
 
   ([index events insert? f-event->event]
    (mapv #(insert index % insert? f-event->event) events)))
