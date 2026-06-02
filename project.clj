@@ -12,7 +12,10 @@
 
   :jvm-opts ["-server"]
   :target-path "target/%s"
+  :test-paths ["test" "bench"]
   :profiles {:uberjar {:aot :all}
+             :test
+             {:dependencies [[criterium "0.4.6"]]}
              :bench
              {:dependencies [[criterium "0.4.6"]]
               :source-paths ["src" "bench"]

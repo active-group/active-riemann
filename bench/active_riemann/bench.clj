@@ -112,7 +112,7 @@
 (defn f-insertion-approval
   [insertion-approval]
   (cond
-    (= insertion-approval :dummy) active-index/dummy-insert?
+    (= insertion-approval :dummy) active-index/always-insert
     (= insertion-approval :util) active-index/util-insert?
     (= insertion-approval :enhanced) enhanced-insert?))
 
