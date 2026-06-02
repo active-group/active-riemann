@@ -1,4 +1,4 @@
-(ns bench
+(ns active-riemann.bench
   (:require [active-riemann.index :as active-index]
             [active-riemann.logging :as log]
             [active.clojure.config :as active-config]
@@ -6,7 +6,8 @@
             [active.clojure.logger.timbre :as timbre]
             [riemann.config :as riemann-config]
             [riemann.index :as riemann-index]
-            [criterium.core :as crit]))
+            [criterium.core :as crit])
+  (:import (java.io File)))
 
 ;; File path helper
 
@@ -25,6 +26,7 @@
 
 (defn log-config
   [_log-file-path]
+  ;; (println "Log file-path: " log-file-path)
   (active-config/make-configuration
    timbre/timbre-config-schema
    []
@@ -61,19 +63,23 @@
 ;; -- backup
 
 (defn backup-main
-  [number-of-events number-of-event-key-values store-file-path]
-  (println "Prepare backup benchmark")
+  [number-of-events number-of-event-key-values store-file-path dry-run?]
+  (when-not dry-run? (println "Prepare backup benchmark"))
   (let [the-index (riemann-config/index)
         events (random-events number-of-events number-of-event-key-values)]
-    (println "Number of events: " number-of-events)
-    (println "Number of key-values per event: " number-of-event-key-values)
-    (println "Insert events in index...")
+    (when-not dry-run?
+      (println "Number of events: " number-of-events)
+      (println "Number of key-values per event: " number-of-event-key-values)
+      (println "Insert events in index..."))
 
     (mapv #(riemann-index/insert the-index %) events)
 
-    (println "Start benchmark")
-    (crit/bench (active-index/backup-index the-index store-file-path))
-    (println "End benchmark")))
+    (when-not dry-run? (println "Start benchmark"))
+    (let [run #(active-index/backup-index the-index store-file-path)]
+      (if (not dry-run?)
+        (crit/bench (run))
+        (run)))
+    (when-not dry-run? (println "End benchmark"))))
 
 ;; -- restore
 
@@ -111,18 +117,23 @@
     (= insertion-approval :enhanced) enhanced-insert?))
 
 (defn restore-main
-  [insertion-approval number-of-events number-of-event-key-values]
-  (println "Prepare benchmark")
+  [insertion-approval number-of-events number-of-event-key-values dry-run?]
+  (when-not dry-run? (println "Prepare benchmark"))
   (let [events (random-events number-of-events number-of-event-key-values)]
-    (println "Number of events: " number-of-events)
-    (println "Number of key-values per event: " number-of-event-key-values)
-    (println "Insertion-approval: " insertion-approval)
+    (when-not dry-run?
+      (println "Number of events: " number-of-events)
+      (println "Number of key-values per event: " number-of-event-key-values)
+      (println "Insertion-approval: " insertion-approval))
 
-    (println "Start benchmark")
-    (crit/bench (active-index/insert-events (riemann-config/index)
-                                            events
-                                            (f-insertion-approval insertion-approval)))
-    (println "End benchmark")))
+    (when-not dry-run? (println "Start benchmark"))
+    (let [run #(active-index/insert-events (riemann-config/index)
+                                           events
+                                           (f-insertion-approval insertion-approval))]
+      (if (not dry-run?)
+        (crit/bench (run))
+        (run)))
+    
+    (when-not dry-run? (println "End benchmark"))))
 
 ;; main
 ;; args:
@@ -133,21 +144,26 @@
 (defn -main
   [& args]
   (let [setup-values (read-string (nth args 0))
-        datetime (java.time.LocalDateTime/now)
-        store-file-path (base-file-path datetime ".edn")
-        log-file-path (base-file-path datetime ".log")]
-
-    (-> (log-config log-file-path)
+        dry-run? (= "--dry-run" (when (> (count args) 1) (nth args 1)))
+        datetime (java.time.LocalDateTime/now)]
+    
+    (-> (log-config nil #_(base-file-path datetime ".log"))
         timbre/configuration->timbre-config
         event-logger/set-global-log-events-config!)
-    (println "Log file-path: " log-file-path)
 
-    (cond
-      (= (:task setup-values) :backup)
-      (backup-main (:number-of-events setup-values)
-                   (:number-of-event-key-values setup-values)
-                   store-file-path)
-      (= (:task setup-values) :restore)
-      (restore-main (:f-insertion? setup-values)
-                    (:number-of-events setup-values)
-                    (:number-of-event-key-values setup-values)))))
+    (let [store-file-path (if dry-run?
+                            (.getPath (doto (File/createTempFile "active-riemann-benchmark-" ".edn")
+                                        (.deleteOnExit)))
+                            (base-file-path datetime ".edn"))]
+
+      (cond
+        (= (:task setup-values) :backup)
+        (backup-main (:number-of-events setup-values)
+                     (:number-of-event-key-values setup-values)
+                     store-file-path
+                     dry-run?)
+        (= (:task setup-values) :restore)
+        (restore-main (:f-insertion? setup-values)
+                      (:number-of-events setup-values)
+                      (:number-of-event-key-values setup-values)
+                      dry-run?)))))

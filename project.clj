@@ -16,5 +16,5 @@
              :bench
              {:dependencies [[criterium "0.4.6"]]
               :source-paths ["src" "bench"]
-              :main bench}}
+              :main active-riemann.bench}}
   :aliases {"bench" ["with-profile" "bench" "run"]})
