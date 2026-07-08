@@ -131,7 +131,7 @@
         queue-metric (atom nil)]
     (with-redefs [active.clojure.logger.metric/log-metric!-internal
                   (fn [_namespace metric _labels value & [_mp]]
-                    (when (active.clojure.logger.metric-accumulator/gauge-metric? metric)
+                    (when (= "active_riemann_streams_fifo_queue_size" (active.clojure.logger.metric-accumulator/metric-name metric))
                       (reset! queue-metric value)))]
       (test-stream-intervals
        (fifo-throttle 1 {:max-fifo-size (inc cnt)})
