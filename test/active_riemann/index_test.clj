@@ -567,7 +567,7 @@
          (gen/fmap make-riemann-event))))
 
 (def clean-number-gen
-  (gen/such-that Double/isFinite (gen/one-of [gen/int gen/double])))
+  (gen/such-that Double/isFinite (gen/one-of [gen/small-integer gen/double])))
 
 (def generic-event-gen
   (gen/map gen/keyword (gen/one-of [gen/string clean-number-gen gen/keyword gen/boolean])))
