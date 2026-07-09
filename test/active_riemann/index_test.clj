@@ -1,13 +1,18 @@
 (ns active-riemann.index-test
-  (:require  [clojure.test :as t]
-             [clojure.edn :as clojure-edn]
-             [riemann.config :as riemann-config]
-             [riemann.index :as riemann-index]
-             [riemann.query :as riemann-query]
-             [active.clojure.logger.internal :as internal]
-             [active-riemann.index :as active-index]
-             [test-with-files.tools :refer [with-tmp-dir]]
-             [clojure.string :as string]))
+  (:require
+   [active-riemann.index :as active-index]
+   [active.clojure.logger.internal :as internal]
+   [clojure.edn :as clojure-edn]
+   [clojure.string :as string]
+   [clojure.test :as t]
+   [clojure.test.check.clojure-test :as ct]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [riemann.codec :as codec]
+   [riemann.config :as riemann-config]
+   [riemann.index :as riemann-index]
+   [riemann.query :as riemann-query]
+   [test-with-files.tools :refer [with-tmp-dir]]))
 
 ;; =================== setup
 
@@ -537,3 +542,55 @@
                      "{:host \"localhost\", :service \"foo\", :time 1} "
                      "event not inserted into index.")]}]
              (captured-events)))))
+
+(def riemann-event-gen
+  "Generator for events as Riemann might emit them."
+  (let [state-gen (gen/elements ["A" "B" "C"])
+        nilable-string-gen (gen/one-of [(gen/return nil) (gen/not-empty gen/string-alphanumeric)])
+        metric-gen (gen/one-of [(gen/return nil)
+                                gen/large-integer
+                                (gen/double* {:infinite? false :NaN? false})])
+        tags-gen (gen/one-of [(gen/return nil)
+                              (gen/vector (gen/not-empty gen/string-alphanumeric) 0 5)])
+        time-gen (gen/double* {:infinite? false :NaN? false :min 0})
+        ttl-gen (gen/one-of [(gen/return nil)
+                             (gen/double* {:infinite? false :NaN? false :min 0})])
+        make-riemann-event  (partial apply codec/->Event)]
+    (->> (gen/tuple (gen/not-empty gen/string-alphanumeric)
+                    (gen/not-empty gen/string-alphanumeric)
+                    state-gen
+                    nilable-string-gen
+                    metric-gen
+                    tags-gen
+                    time-gen
+                    ttl-gen)
+         (gen/fmap make-riemann-event))))
+
+(def clean-number-gen
+  (gen/such-that Double/isFinite (gen/one-of [gen/small-integer gen/double])))
+
+(def generic-event-gen
+  (gen/map gen/keyword (gen/one-of [gen/string clean-number-gen gen/keyword gen/boolean])))
+
+(def active-riemann-event-gen
+  "Generator for events that might show up in active-riemann."
+  (gen/one-of [riemann-event-gen
+               generic-event-gen]))
+
+(ct/defspec normalize-event-converts-valid-inputs-to-maps
+  (prop/for-all [event active-riemann-event-gen]
+                (let [normalized-event (active-index/normalize-event event)]
+                  (and (map? normalized-event)
+                       (not (record? normalized-event))))))
+
+(ct/defspec try-store->try-read-edn-roundtrips-cleanly
+  (prop/for-all [events (gen/vector active-riemann-event-gen)]
+                (with-tmp-dir tmp-dir
+                  (let [file-path (format "%s/riemann-index-backup-%s.edn" tmp-dir (gensym))]
+                    (active-index/try-store file-path events)
+                    (let [read-events (active-index/try-open-edn file-path)]
+                      ;; Read: Normalizing events beforehand is the same as
+                      ;; writing, then reading the unnormalized events to/from
+                      ;; disk.
+                      (= (mapv active-index/normalize-event events)
+                         read-events))))))

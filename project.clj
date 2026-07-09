@@ -15,7 +15,9 @@
   :test-paths ["test" "bench"]
   :profiles {:uberjar {:aot :all}
              :test
-             {:dependencies [[criterium "0.4.6"]]}
+             {:dependencies [[criterium "0.4.6"]
+                             [riemann-clojure-client "0.5.4"]
+                             [org.clojure/test.check "1.1.3"]]}
              :bench
              {:dependencies [[criterium "0.4.6"]]
               :source-paths ["src" "bench"]

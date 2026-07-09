@@ -1,10 +1,11 @@
 (ns active-riemann.index
   "Functionality related to the Riemann index."
-  (:require [active.clojure.logger.metric :as metric]
-            [active.clojure.logger.timed-metric :as timed-metric]
-            [clojure.edn :as clojure-edn]
-            [active-riemann.logging :as log]
-            [riemann.index :as riemann-index]))
+  (:require
+   [active-riemann.logging :as log]
+   [active.clojure.logger.metric :as metric]
+   [active.clojure.logger.timed-metric :as timed-metric]
+   [clojure.edn :as clojure-edn]
+   [riemann.index :as riemann-index]))
 
 ;; util
 
@@ -26,12 +27,20 @@
 
 ;; =================== backup index
 
+(defn normalize-event
+  "Takes an entry from the index and makes sure it's a map for safe storage and
+  retrieval as edn."
+  [index-entry]
+  (into {} index-entry))
+
 (defn try-store
   [path-to-file data]
   (try (timed-metric/log-time-metric!
         #(metric/log-histogram-metric!
           "active_riemann_index_write_file_duration_milliseconds" [5 10 20 40 80 160] %)
-        (spit path-to-file (or data []) :append false))
+        (spit path-to-file
+              (mapv normalize-event data)
+              :append false))
        (log/info `try-store "Successfully stored riemann-index backup file:" path-to-file)
        data
        (catch java.lang.IllegalArgumentException e
